@@ -347,7 +347,7 @@ const Navbar = ({ isAdmin, setIsAdmin, isCustomer, setIsCustomer, isSeller, setI
     <AppBar position="fixed" sx={{ 
       zIndex: (theme) => theme.zIndex.drawer + 1, 
       boxShadow: 3,
-      backgroundImage: 'linear-gradient(to bottom, #FF4D33, #FF5E46, #FF6E59)',
+      backgroundImage: `linear-gradient(to bottom,rgb(117, 34, 185),rgb(24, 65, 155),rgb(59, 18, 156))`,
       '&:before': {
         content: '""',
         position: 'absolute',
