@@ -227,9 +227,9 @@ const SellerLogin = ({ setIsSeller }) => {
               fullWidth
               variant="contained"
               sx={{ mt: 2 ,
-                backgroundImage: 'linear-gradient(to bottom, #FF4D33, #FF5E46, #FF6E59)',
+                backgroundImage: `linear-gradient(to bottom,rgb(117, 34, 185),rgb(24, 65, 155),rgb(59, 18, 156))`,
                 '&:hover': {
-                  backgroundImage: 'linear-gradient(to bottom, #FF5E46, #FF6E59, #FF7E69)',
+                  backgroundImage: `linear-gradient(to bottom,rgb(117, 34, 185),rgb(24, 65, 155),rgb(59, 18, 156))`,
                   boxShadow: '0 4px 8px rgba(255, 77, 51, 0.3)'
                 }
 
