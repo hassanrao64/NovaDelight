@@ -31,7 +31,7 @@ const Footer = () => {
   return (
     <Box
       sx={{
-        backgroundImage: 'linear-gradient(to bottom, #FF4D33, #FF5E46, #FF6E59)',
+        backgroundImage: `linear-gradient(to bottom,rgb(117, 34, 185),rgb(24, 65, 155),rgb(59, 18, 156))`,
         color: 'white',
         pt: 6,
         pb: 3,
@@ -47,7 +47,7 @@ const Footer = () => {
           left: 0,
           right: 0,
           height: '4px',
-          background: 'linear-gradient(90deg, #ff4081, #7c4dff, #00bcd4, #ff5722)',
+          background: `linear-gradient(to bottom,rgb(117, 34, 185),rgb(24, 65, 155),rgb(59, 18, 156))`,
         }
       }}
     >
@@ -67,7 +67,7 @@ const Footer = () => {
             </Typography>
             <Typography variant="body2" sx={{ mb: 2, opacity: 0.7 }}>
               We provide high-quality products from trusted sellers worldwide. Our missi
-              <Link
+              {/* <Link
                 href="/admin/login"
                 sx={{
                   color: 'inherit',
@@ -78,8 +78,8 @@ const Footer = () => {
                 }}
               >
                 o
-              </Link>
-              n is to connect buyers with the best products at great prices.
+              </Link> */}
+              on is to connect buyers with the best products at great prices.
             </Typography>
             <Box sx={{ mt: 2 }}>
               <IconButton color="inherit" aria-label="Facebook">
