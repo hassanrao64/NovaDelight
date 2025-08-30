@@ -5008,8 +5008,10 @@ const [toogle, setToogle] = useState(false)
         className='h-8 absolute z-50 top-3 left-3 flex items-center box-border justify-center px-3 py-1 rounded-lg text-white hover:bg-[#e73c1e] transition-colors' 
         onClick={() => setToogle(!toogle)}
         style={{ 
-          backgroundColor: '#FF4D33',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+          // backgroundColor: '#FF4D33',
+           backgroundImage: `linear-gradient(to bottom,rgb(117, 34, 185),rgb(24, 65, 155),rgb(59, 18, 156))`,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+         
         }}
       >
         <div className="flex items-center">
@@ -5027,7 +5029,7 @@ const [toogle, setToogle] = useState(false)
         className={`md:w-64 ${toogle ? 'block' : 'hidden'} fixed top-0 left-0 h-full bg-gradient-to-b from-[#FF4D33] to-[#FF6E59] text-white overflow-y-auto shadow-lg flex flex-col z-40`}
         style={{
           boxShadow: "2px 0 20px rgba(0, 0, 0, 0.2)",
-          backgroundImage: `linear-gradient(to bottom, #FF4D33, #FF5E46, #FF6E59)`,
+              backgroundImage: `linear-gradient(to bottom,rgb(117, 34, 185),rgb(24, 65, 155),rgb(59, 18, 156))`,
         }}
       >
         {/* <button className='absolute top-4 right-3 flex items-center justify-center w-8 h-8 rounded-full text-white hover:bg-[#e73c1e] transition-colors' 
