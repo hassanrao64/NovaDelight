@@ -125,10 +125,11 @@ const AdminLogin = ({ setIsAdmin }) => {
               fullWidth
               variant="contained"
               sx={{ mt: 3,
-                backgroundImage: 'linear-gradient(to bottom, #FF4D33, #FF5E46, #FF6E59)',
+        background: 'linear-gradient(90deg, #1976d2 0%, #2196f3 35%, #64b5f6 100%)',
+                boxShadow: '0 3px 5px 2px rgba(33, 150, 243, .3)',
                 '&:hover': {
-                  backgroundImage: 'linear-gradient(to bottom, #FF5E46, #FF6E59, #FF7E69)',
-                  boxShadow: '0 4px 8px rgba(255, 77, 51, 0.3)'
+                  background: 'linear-gradient(90deg, #1565c0 0%, #1976d2 35%, #2196f3 100%)',
+                  boxShadow: '0 4px 8px 2px rgba(33, 150, 243, .4)'
                 }
 
                }}
