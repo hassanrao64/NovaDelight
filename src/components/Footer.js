@@ -160,13 +160,13 @@ const Footer = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Phone sx={{ mr: 1, opacity: 0.7 }} />
               <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                +1 2894696121
+                +1 6174004389
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Email sx={{ mr: 1, opacity: 0.7 }} />
               <Typography variant="body2" sx={{ opacity: 0.7 }}>
-               weyfeir@gmail.com
+               infonovadelight@gmail.com
               </Typography>
             </Box>
             {/* <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -217,7 +217,7 @@ const Footer = () => {
         
         <Box sx={{ textAlign: 'center', opacity: 0.7 }}>
           <Typography variant="body2">
-            © {2017} DelightSphere Shopping Store. All rights reserved.
+            © {2017} NovaDelight. All rights reserved.
           </Typography>
         
         </Box>
