@@ -89,8 +89,8 @@ export const createAdminUser = async () => {
   adminCreationAttempted = true;
   
   try {
-    const adminEmail = "novadelight@admin.com";
-  const adminPassword = "NoveDelight$07";
+    const adminEmail = "admin@novadelight.com";
+  const adminPassword = "NovaAdmin$07";
     
     // First try to sign in with admin credentials
     try {
