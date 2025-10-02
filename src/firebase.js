@@ -12,21 +12,15 @@ import { getStorage } from "firebase/storage";
 
 // 🔹 Firebase Config from .env
 const firebaseConfig = {
-  // apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  // authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  // projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  // storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  // messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  // appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  // measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 
-REACT_APP_FIREBASE_API_KEY=AIzaSyD5vyIQtauIcmYSyoBsms0UcW9ZOAXyZpU
-REACT_APP_FIREBASE_AUTH_DOMAIN=novadelight-eb9d9.firebaseapp.com
-REACT_APP_FIREBASE_PROJECT_ID=novadelight-eb9d9
-REACT_APP_FIREBASE_STORAGE_BUCKET=novadelight-eb9d9.appspot.com
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=566091148335
-REACT_APP_FIREBASE_APP_ID=1:566091148335:web:02f483e88effdd2f786ada
-REACT_APP_FIREBASE_MEASUREMENT_ID=G-HYJJPLZXKL
+
   
 };
 
