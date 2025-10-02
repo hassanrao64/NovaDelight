@@ -1,18 +1,16 @@
-import { initializeApp } from 'firebase/app';
+// firebase.js
+import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
   createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword 
-} from 'firebase/auth';
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  getDoc 
-} from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
-// Firebase Config
+// 🔹 Firebase Config from .env
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -20,100 +18,87 @@ const firebaseConfig = {
   storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase
+// 🔹 Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// 🔹 Services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-/**
- * Refresh Firebase auth session if stored credentials exist
- */
-export const refreshFirebaseAuthSession = async () => {
+// ----------------------------------------------------
+// ✅ USER FUNCTIONS
+// ----------------------------------------------------
+
+// 🔹 Sign Up New User
+export const registerUser = async (email, password) => {
   try {
-    const sellerId = localStorage.getItem('sellerId');
-    const sellerEmail = localStorage.getItem('sellerEmail');
-
-    if (!sellerId || !sellerEmail) {
-      return false;
-    }
-
-    if (!auth.currentUser || auth.currentUser.email !== sellerEmail) {
-      try {
-        const sellerDoc = await getDoc(doc(db, 'sellers', sellerId));
-        if (!sellerDoc.exists()) return false;
-
-        const sellerData = sellerDoc.data();
-        const plainPassword = sellerData.plainPassword || sellerData.password;
-
-        if (plainPassword && sellerEmail) {
-          await signInWithEmailAndPassword(auth, sellerEmail, plainPassword);
-          return true;
-        }
-      } catch (error) {
-        console.error("Error refreshing auth session:", error);
-        return false;
-      }
-    } else {
-      return true;
-    }
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    console.log("User registered:", userCredential.user);
+    return userCredential.user;
   } catch (error) {
-    console.error("Error in refreshFirebaseAuthSession:", error);
-    return false;
+    console.error("Sign Up Error:", error.code, error.message);
+    throw error;
   }
-  return false;
 };
 
-// Admin Creation Flag
-let adminCreationAttempted = false;
-
-/**
- * Create or sign in admin user
- */
-export const createAdminUser = async () => {
-  if (adminCreationAttempted) return;
-  adminCreationAttempted = true;
-
+// 🔹 Sign In Existing User
+export const loginUser = async (email, password) => {
   try {
-    const adminEmail = "novadelight@admin.com";
-    const adminPassword = "NoveDelight$07";
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    console.log("Login successful:", userCredential.user);
+    return userCredential.user;
+  } catch (error) {
+    console.error("Login Error:", error.code, error.message);
+    throw error;
+  }
+};
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
-      const adminDoc = await getDoc(doc(db, 'admins', userCredential.user.uid));
+// 🔹 Logout User
+export const logoutUser = async () => {
+  try {
+    await signOut(auth);
+    console.log("User logged out");
+  } catch (error) {
+    console.error("Logout Error:", error);
+  }
+};
 
-      if (!adminDoc.exists()) {
-        await setDoc(doc(db, 'admins', userCredential.user.uid), {
-          email: adminEmail,
-          role: 'admin',
-          createdAt: new Date().toISOString()
-        });
-      }
+// 🔹 Auth State Listener (for auto login check)
+export const listenAuthState = (callback) => {
+  return onAuthStateChanged(auth, callback);
+};
 
-      await auth.signOut();
-    } catch (signInError) {
-      if (signInError.code === 'auth/user-not-found') {
-        const newAdminCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
-        await setDoc(doc(db, 'admins', newAdminCredential.user.uid), {
-          email: adminEmail,
-          role: 'admin',
-          createdAt: new Date().toISOString()
-        });
-
-        await auth.signOut();
-        console.log("Admin user created successfully");
-      } else {
-        throw signInError;
-      }
+// 🔹 Refresh Firebase Auth Session
+export const refreshFirebaseAuthSession = async () => {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      // Get a fresh token
+      await user.getIdToken(true);
+      console.log("Auth session refreshed successfully");
+      return true;
+    } else {
+      console.log("No user logged in");
+      return false;
     }
   } catch (error) {
-    if (error.code === 'auth/email-already-in-use') {
-      console.log("Admin user already exists");
-    } else {
-      console.error("Error in admin setup:", error);
-    }
+    console.error("Error refreshing auth session:", error);
+    return false;
+  }
+};
+
+// 🔹 Create Admin User (for setup purposes)
+export const createAdminUser = async () => {
+  try {
+    // This is a placeholder function - implement actual admin creation logic as needed
+    console.log("Admin user creation requested");
+    return true;
+  } catch (error) {
+    console.error("Error creating admin user:", error);
+    throw error;
   }
 };
