@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Grid, Paper, Typography, useMediaQuery, useTheme, Drawer, IconButton, styled, alpha, Button, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, CircularProgress, TextField, InputAdornment } from '@mui/material';
-import { Menu as MenuIcon, Search as SearchIcon, Add as AddIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, Search as SearchIcon, Add as AddIcon, DeleteSweep as DeleteSweepIcon } from '@mui/icons-material';
 import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
 import { db, auth } from '../../firebase';
@@ -104,6 +104,10 @@ const Chat = ({ isAdmin, onMessageSent }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chatToDelete, setChatToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // Add states for clear all chats dialog
+  const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
+  const [clearAllLoading, setClearAllLoading] = useState(false);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -773,6 +777,86 @@ const Chat = ({ isAdmin, onMessageSent }) => {
     }
   };
   
+  // Function to handle clearing all chats
+  const handleClearAllChats = async () => {
+    if (!isAdmin) return; // Only allow admins to clear all chats
+    
+    try {
+      setClearAllLoading(true);
+      
+      // Get all chats
+      const chatsRef = collection(db, 'chats');
+      const chatsSnapshot = await getDocs(chatsRef);
+      
+      if (chatsSnapshot.empty) {
+        console.log('No chats to clear');
+        setClearAllLoading(false);
+        setClearAllDialogOpen(false);
+        return;
+      }
+      
+      // Process chats and their messages for deletion
+      // Firestore batches have a limit of 500 operations, so we'll process in chunks
+      const maxBatchSize = 500;
+      let batch = writeBatch(db);
+      let batchCount = 0;
+      
+      for (const chatDoc of chatsSnapshot.docs) {
+        const chatId = chatDoc.id;
+        
+        // Delete all messages in this chat
+        const messagesRef = collection(db, 'chats', chatId, 'messages');
+        const messagesSnapshot = await getDocs(messagesRef);
+        
+        for (const messageDoc of messagesSnapshot.docs) {
+          // Check if we need to commit the current batch and start a new one
+          if (batchCount >= maxBatchSize) {
+            await batch.commit();
+            batch = writeBatch(db);
+            batchCount = 0;
+          }
+          
+          batch.delete(doc(db, 'chats', chatId, 'messages', messageDoc.id));
+          batchCount++;
+        }
+        
+        // Delete the chat document itself
+        // Check if we need to commit the current batch first
+        if (batchCount >= maxBatchSize) {
+          await batch.commit();
+          batch = writeBatch(db);
+          batchCount = 0;
+        }
+        
+        batch.delete(doc(db, 'chats', chatId));
+        batchCount++;
+      }
+      
+      // Commit any remaining operations
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+      
+      console.log(`Cleared all ${chatsSnapshot.size} chats successfully`);
+      
+      // Clear the chats state
+      setChats([]);
+      
+      // Clear the selected chat if any
+      if (selectedChatId) {
+        setSelectedChatId(null);
+        setOtherUserDetails(null);
+      }
+      
+      setClearAllLoading(false);
+      setClearAllDialogOpen(false);
+    } catch (error) {
+      console.error('Error clearing all chats:', error);
+      setClearAllLoading(false);
+      // Don't close dialog on error so user can retry
+    }
+  };
+  
   // Modify the chat layout for sellers to show chat window directly
   const renderChatLayout = () => {
     if (isMobile) {
@@ -799,16 +883,31 @@ const Chat = ({ isAdmin, onMessageSent }) => {
               <SidebarContainer square elevation={0}>
                 <SidebarHeader>
                   <Typography variant="h6">Conversations</Typography>
-                  <Button
-                    startIcon={<AddIcon />}
-                    size="small"
-                    color="primary"
-                    variant="outlined"
-                    onClick={() => setShowSellerDialog(true)}
-                    sx={{ mt: 1, borderRadius: '20px', textTransform: 'none' }}
-                  >
-                    New Conversation
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                    <Button
+                      startIcon={<AddIcon />}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      onClick={() => setShowSellerDialog(true)}
+                      sx={{ borderRadius: '20px', textTransform: 'none' }}
+                    >
+                      New Conversation
+                    </Button>
+                    {isAdmin && (
+                      <Button
+                        startIcon={<DeleteSweepIcon />}
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        onClick={() => setClearAllDialogOpen(true)}
+                        sx={{ borderRadius: '20px', textTransform: 'none' }}
+                        disabled={chats.length === 0 || clearAllLoading}
+                      >
+                        Clear All
+                      </Button>
+                    )}
+                  </Box>
                 </SidebarHeader>
                 <ScrollableChatListContainer>
                   <ChatList 
@@ -858,16 +957,31 @@ const Chat = ({ isAdmin, onMessageSent }) => {
             <SidebarContainer elevation={0}>
               <SidebarHeader>
                 <Typography variant="h6">Conversations</Typography>
-                <Button
-                  startIcon={<AddIcon />}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                  onClick={() => setShowSellerDialog(true)}
-                  sx={{ mt: 1, borderRadius: '20px', textTransform: 'none' }}
-                >
-                  New Conversation
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                  <Button
+                    startIcon={<AddIcon />}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    onClick={() => setShowSellerDialog(true)}
+                    sx={{ borderRadius: '20px', textTransform: 'none' }}
+                  >
+                    New Conversation
+                  </Button>
+                  {isAdmin && (
+                    <Button
+                      startIcon={<DeleteSweepIcon />}
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      onClick={() => setClearAllDialogOpen(true)}
+                      sx={{ borderRadius: '20px', textTransform: 'none' }}
+                      disabled={chats.length === 0 || clearAllLoading}
+                    >
+                      Clear All
+                    </Button>
+                  )}
+                </Box>
               </SidebarHeader>
               <ScrollableChatListContainer>
                 <ChatList 
@@ -1032,6 +1146,61 @@ const Chat = ({ isAdmin, onMessageSent }) => {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Clear All Chats Confirmation Dialog */}
+      {isAdmin && (
+        <Dialog
+          open={clearAllDialogOpen}
+          onClose={!clearAllLoading ? () => setClearAllDialogOpen(false) : undefined}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle sx={{ color: 'error.main' }}>Clear All Conversations</DialogTitle>
+          <DialogContent>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              Are you sure you want to delete all conversations?
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              This action will permanently delete:
+            </Typography>
+            <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+              <Box component="li" sx={{ mb: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  All conversation threads
+                </Typography>
+              </Box>
+              <Box component="li" sx={{ mb: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  All messages in all conversations
+                </Typography>
+              </Box>
+              <Box component="li">
+                <Typography variant="body2" color="text.secondary">
+                  This action cannot be undone
+                </Typography>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => setClearAllDialogOpen(false)} 
+              disabled={clearAllLoading}
+              color="primary"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleClearAllChats} 
+              color="error" 
+              disabled={clearAllLoading}
+              variant="contained"
+              startIcon={clearAllLoading ? <CircularProgress size={20} color="inherit" /> : <DeleteSweepIcon />}
+            >
+              {clearAllLoading ? 'Clearing...' : 'Clear All Conversations'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </ChatContainer>
   );
 };
