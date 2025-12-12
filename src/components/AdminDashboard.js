@@ -3729,6 +3729,17 @@ const AdminDashboard = () => {
                         >
                           <EditIcon />
                         </IconButton>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete seller "${seller.name || seller.email}"? This action cannot be undone.`)) {
+                              handleSellerDelete(seller.id);
+                            }
+                          }}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
