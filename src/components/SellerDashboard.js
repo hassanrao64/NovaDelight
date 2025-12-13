@@ -4172,12 +4172,43 @@ const SellerDashboard = ({ setIsSeller }) => {
         {/* Seller Rating Section */}
         <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
           <Typography variant="subtitle1" component="legend">Your Rating:</Typography>
-          <Rating
-            value={sellerData?.rating || 0}
-            readOnly
-            precision={0.5}
-            sx={{ color: '#FF4D33' }}
-          />
+          <Box
+            sx={{
+              '& .MuiRating-root': {
+                '& > span:nth-of-type(1) .MuiRating-iconFilled svg': {
+                  color: '#E74C3C !important',
+                },
+                '& > span:nth-of-type(2) .MuiRating-iconFilled svg': {
+                  color: '#E67E22 !important',
+                },
+                '& > span:nth-of-type(3) .MuiRating-iconFilled svg': {
+                  color: '#F1C40F !important',
+                },
+                '& > span:nth-of-type(4) .MuiRating-iconFilled svg': {
+                  color: '#2ECC71 !important',
+                },
+                '& > span:nth-of-type(5) .MuiRating-iconFilled svg': {
+                  color: '#1ABC9C !important',
+                },
+                '& > span:nth-of-type(6) .MuiRating-iconFilled svg': {
+                  color: '#3498DB !important',
+                },
+                '& > span:nth-of-type(7) .MuiRating-iconFilled svg': {
+                  color: '#9B59B6 !important',
+                },
+                '& .MuiRating-iconEmpty svg': {
+                  color: '#d3d3d3 !important',
+                },
+              },
+            }}
+          >
+            <Rating
+              value={sellerData?.rating || 0}
+              readOnly
+              precision={0.5}
+              max={7}
+            />
+          </Box>
           <Typography variant="body2" color="text.secondary">
             ({sellerData?.rating?.toFixed(1) || '0.0'})
           </Typography>
