@@ -6516,19 +6516,74 @@ const AdminDashboard = () => {
                   </FormControl>
                   <Box sx={{ mt: 2 }}>
                     <Typography component="legend">Seller Rating</Typography>
-                    <Rating
-                      name="rating"
-                      value={Number(selectedSeller.rating) || 0}
-                      precision={1}
-                      max={5}
-                      size="large"
-                      onChange={(event, newValue) => {
-                        setSelectedSeller(prev => ({
-                          ...prev,
-                          rating: newValue
-                        }));
+                    <Box
+                      sx={{
+                        '& .MuiRating-root': {
+                          '& .MuiRating-decimal:nth-of-type(1) .MuiRating-iconFilled, & .MuiRating-decimal:nth-of-type(1) .MuiRating-iconHover': {
+                            color: '#E74C3C !important',
+                            '& svg': {
+                              fill: '#E74C3C !important',
+                            },
+                          },
+                          '& .MuiRating-decimal:nth-of-type(2) .MuiRating-iconFilled, & .MuiRating-decimal:nth-of-type(2) .MuiRating-iconHover': {
+                            color: '#E67E22 !important',
+                            '& svg': {
+                              fill: '#E67E22 !important',
+                            },
+                          },
+                          '& .MuiRating-decimal:nth-of-type(3) .MuiRating-iconFilled, & .MuiRating-decimal:nth-of-type(3) .MuiRating-iconHover': {
+                            color: '#F1C40F !important',
+                            '& svg': {
+                              fill: '#F1C40F !important',
+                            },
+                          },
+                          '& .MuiRating-decimal:nth-of-type(4) .MuiRating-iconFilled, & .MuiRating-decimal:nth-of-type(4) .MuiRating-iconHover': {
+                            color: '#2ECC71 !important',
+                            '& svg': {
+                              fill: '#2ECC71 !important',
+                            },
+                          },
+                          '& .MuiRating-decimal:nth-of-type(5) .MuiRating-iconFilled, & .MuiRating-decimal:nth-of-type(5) .MuiRating-iconHover': {
+                            color: '#1ABC9C !important',
+                            '& svg': {
+                              fill: '#1ABC9C !important',
+                            },
+                          },
+                          '& .MuiRating-decimal:nth-of-type(6) .MuiRating-iconFilled, & .MuiRating-decimal:nth-of-type(6) .MuiRating-iconHover': {
+                            color: '#3498DB !important',
+                            '& svg': {
+                              fill: '#3498DB !important',
+                            },
+                          },
+                          '& .MuiRating-decimal:nth-of-type(7) .MuiRating-iconFilled, & .MuiRating-decimal:nth-of-type(7) .MuiRating-iconHover': {
+                            color: '#9B59B6 !important',
+                            '& svg': {
+                              fill: '#9B59B6 !important',
+                            },
+                          },
+                          '& .MuiRating-iconEmpty': {
+                            color: '#d3d3d3 !important',
+                            '& svg': {
+                              fill: '#d3d3d3 !important',
+                            },
+                          },
+                        },
                       }}
-                    />
+                    >
+                      <Rating
+                        name="rating"
+                        value={Number(selectedSeller.rating) || 0}
+                        precision={1}
+                        max={7}
+                        size="large"
+                        onChange={(event, newValue) => {
+                          setSelectedSeller(prev => ({
+                            ...prev,
+                            rating: newValue
+                          }));
+                        }}
+                      />
+                    </Box>
                   </Box>
                 </Grid>
                 <Grid item xs={12}>
