@@ -170,13 +170,13 @@ const Message = ({ message, isAdmin, onDeleteMessage }) => {
   const { text, imageUrl, timestamp, senderName, senderUid, id } = message;
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   
-  // Display "Customer Care" instead of "novadelight@admin.com" for sender name
-      const displayName = senderName === "novadelight@admin.com" || senderName === "Customer Care" ? "Customer Care" : senderName;
+  // Display "Customer Care" instead of "admin@novadelight.com" for sender name
+      const displayName = senderName === "admin@novadelight.com" || senderName === "Customer Care" ? "Customer Care" : senderName;
   
   // Determine if this message is from the current user (either admin or seller)
   // isAdmin prop now represents whether the current user is admin, not the message sender
-  const isCurrentUserMessage = (isAdmin && (senderName === "novadelight@admin.com" || senderName === "Customer Care")) ||
-        (!isAdmin && senderName !== "novadelight@admin.com" && senderName !== "Customer Care");
+  const isCurrentUserMessage = (isAdmin && (senderName === "admin@novadelight.com" || senderName === "Customer Care")) ||
+        (!isAdmin && senderName !== "admin@novadelight.com" && senderName !== "Customer Care");
   
   const formattedTime = timestamp ? new Date(timestamp.toDate()).toLocaleString() : '';
   
