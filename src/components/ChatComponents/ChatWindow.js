@@ -412,7 +412,7 @@ const ChatWindow = ({
   const displayUserDetails = otherUserDetails || localUserDetails;
   
   // Ensure admin email is hidden and displayed as Customer Care
-  const displayName = displayUserDetails?.displayName === "novadelight@admin.com" || displayUserDetails?.displayName === "Customer Care" 
+  const displayName = displayUserDetails?.displayName === "admin@novadelight.com" || displayUserDetails?.displayName === "Customer Care" 
     ? "Customer Care" 
     : displayUserDetails?.displayName || 'Chat';
 
