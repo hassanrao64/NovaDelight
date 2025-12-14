@@ -1325,7 +1325,7 @@ const AdminDashboard = () => {
 
   const [adminProfile, setAdminProfile] = useState({
     name: 'Admin',
-    email: 'admin@example.com',
+    email: 'admin@novadelight.com',
     role: 'Administrator',
     lastLogin: new Date().toISOString()
   });
