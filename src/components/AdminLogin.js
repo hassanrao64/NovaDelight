@@ -15,8 +15,8 @@ import { useNavigate } from 'react-router-dom';
 
 
 //login id and password
-const ADMIN_EMAIL = 'novadelight@admin.com';
-const ADMIN_PASSWORD = 'NoveDelight$07';
+const ADMIN_EMAIL = 'admin@novadelight.com';
+const ADMIN_PASSWORD = '$Nova@Delight18';
 
 const AdminLogin = ({ setIsAdmin }) => {
   const [email, setEmail] = useState('');
