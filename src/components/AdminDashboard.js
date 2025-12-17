@@ -71,6 +71,7 @@ import {
   CurrencyBitcoin as CurrencyBitcoinIcon
 } from '@mui/icons-material';
 import { db, auth } from '../firebase';
+import { signOut } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, setDoc, addDoc, orderBy, onSnapshot, serverTimestamp, getDoc, arrayUnion, arrayRemove, increment, documentId } from 'firebase/firestore';
 import { Chat } from './ChatComponents';
 import StatusUpdateModal from './StatusUpdateModal';
@@ -1362,9 +1363,80 @@ const AdminDashboard = () => {
   const [orderEmailSearch, setOrderEmailSearch] = useState('');
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [isSessionExpiredDialogOpen, setIsSessionExpiredDialogOpen] = useState(false);
+  const sessionTimeoutRef = useRef(null);
   
   const { playNotificationSound } = useNotificationSound();
-  
+ 
+  const handleSessionExpiration = useCallback(() => {
+    setIsSessionExpiredDialogOpen(true);
+  }, []);
+
+  const handleSessionExpiredConfirm = useCallback(async () => {
+    setIsSessionExpiredDialogOpen(false);
+
+    try {
+      // Clear only admin-related session data
+      localStorage.removeItem('rememberedAdmin');
+      localStorage.removeItem('adminId');
+      localStorage.removeItem('adminEmail');
+      localStorage.removeItem('adminLoginTime');
+
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.error('Error signing out admin after session expiration:', error);
+      }
+
+      navigate('/admin/login');
+    } catch (error) {
+      console.error('Error handling admin session expiration:', error);
+      navigate('/admin/login');
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    // Enforce a maximum admin session duration of 1.5 hours (90 minutes)
+    const loginTimeStr = localStorage.getItem('adminLoginTime');
+
+    if (!loginTimeStr) {
+      return;
+    }
+
+
+// session
+
+
+    const maxSessionMs = 90 * 60 * 1000; // 1.5 hours
+    const loginTime = new Date(loginTimeStr).getTime();
+
+    if (Number.isNaN(loginTime)) {
+      return;
+    }
+
+    const now = Date.now();
+    const elapsed = now - loginTime;
+
+    if (elapsed >= maxSessionMs) {
+      handleSessionExpiration();
+      return;
+    }
+
+    const remaining = maxSessionMs - elapsed;
+
+    const timeoutId = window.setTimeout(() => {
+      handleSessionExpiration();
+    }, remaining);
+
+    sessionTimeoutRef.current = timeoutId;
+
+    return () => {
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+      }
+    };
+  }, [handleSessionExpiration]);
+
   useEffect(() => {
     if (activeTab === 'storehouse' || activeTab === 'products') {
       fetchProducts();
@@ -6770,6 +6842,27 @@ const AdminDashboard = () => {
         seller={selectedSellerDetails}
         onClose={() => setIsSellerDetailsModalOpen(false)}
       />
+      
+      {/* Admin Session Expired Dialog */}
+      <Dialog
+        open={isSessionExpiredDialogOpen}
+        onClose={handleSessionExpiredConfirm}
+        aria-labelledby="admin-session-expired-title"
+      >
+        <DialogTitle id="admin-session-expired-title">
+          Session Expired
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Your admin session has expired after 1.5 hours. Please log in again to continue.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleSessionExpiredConfirm} autoFocus>
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
       
       {snackbar.open && (
         <Snackbar
