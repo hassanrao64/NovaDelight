@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  Divider, 
-  CircularProgress, 
-  IconButton, 
+import {
+  Box,
+  Paper,
+  Typography,
+  Divider,
+  CircularProgress,
+  IconButton,
   Stack,
   Tooltip,
   styled,
@@ -20,7 +20,7 @@ import {
   DialogActions,
   Button
 } from '@mui/material';
-import { 
+import {
   ArrowBack as ArrowBackIcon,
   MoreVert as MoreVertIcon,
   Delete as DeleteIcon,
@@ -29,13 +29,13 @@ import {
 import Message from './Message';
 import ChatInput from './ChatInput';
 import { db } from '../../firebase';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  addDoc, 
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  addDoc,
   serverTimestamp,
   getDoc,
   doc,
@@ -149,15 +149,16 @@ const AvatarIcon = styled(Box)(({ theme }) => ({
   },
 }));
 
-const ChatWindow = ({ 
-  selectedChatId, 
-  onBackClick, 
-  currentUserUid, 
+const ChatWindow = ({
+  selectedChatId,
+  onBackClick,
+  currentUserUid,
   currentUserName,
   isAdmin,
   otherUserDetails,
   onDeleteChat,
-  onMessageSent
+  onMessageSent,
+  isMiniAdmin
 }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -167,39 +168,39 @@ const ChatWindow = ({
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const theme = useTheme();
   const [sellerStatus, setSellerStatus] = useState(null);
-  
+
   // Add state for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  
+
   // Load seller status from localStorage and listen for changes
   useEffect(() => {
     if (!isAdmin) {
       const status = localStorage.getItem('sellerStatus');
       setSellerStatus(status);
-      
+
       // Set up a listener for changes to localStorage
       const handleStorageChange = (e) => {
         if (e.key === 'sellerStatus') {
           setSellerStatus(e.newValue);
         }
       };
-      
+
       window.addEventListener('storage', handleStorageChange);
-      
+
       // Periodically check seller status from Firestore
       const checkSellerStatus = async () => {
         try {
           const sellerId = localStorage.getItem('sellerId');
           if (!sellerId) return;
-          
+
           const sellerRef = doc(db, 'sellers', sellerId);
           const sellerDoc = await getDoc(sellerRef);
-          
+
           if (sellerDoc.exists()) {
             const firebaseStatus = sellerDoc.data().status;
-            
+
             // If status has changed, update localStorage
             if (firebaseStatus !== status) {
               localStorage.setItem('sellerStatus', firebaseStatus);
@@ -210,13 +211,13 @@ const ChatWindow = ({
           console.error('Error checking seller status:', error);
         }
       };
-      
+
       // Check status immediately
       checkSellerStatus();
-      
+
       // Set interval to check status periodically (every 60 seconds)
       const intervalId = setInterval(checkSellerStatus, 60000);
-      
+
       // Clean up event listener and interval
       return () => {
         window.removeEventListener('storage', handleStorageChange);
@@ -224,56 +225,56 @@ const ChatWindow = ({
       };
     }
   }, [isAdmin]);
-  
+
   // Scroll to bottom whenever messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
+
   // Load messages for the selected chat
   useEffect(() => {
     if (!selectedChatId) {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
-    
+
     const messagesRef = collection(db, 'chats', selectedChatId, 'messages');
     const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
-    
+
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
       const messagesList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      
+
       setMessages(messagesList);
       setLoading(false);
-      
+
       // Mark messages as read
       if (messagesList.length > 0) {
         markMessagesAsRead();
       }
     });
-    
+
     return () => unsubscribe();
   }, [selectedChatId, currentUserUid]);
-  
+
   // Mark messages as read
   const markMessagesAsRead = async () => {
     if (!selectedChatId) return;
-    
+
     try {
       const chatRef = doc(db, 'chats', selectedChatId);
       const chatDoc = await getDoc(chatRef);
-      
+
       if (chatDoc.exists()) {
         // Determine which field to update based on whether user is admin
-        const fieldToUpdate = isAdmin 
-          ? 'adminUnreadCount' 
+        const fieldToUpdate = isAdmin
+          ? 'adminUnreadCount'
           : 'sellerUnreadCount';
-        
+
         await updateDoc(chatRef, {
           [fieldToUpdate]: 0
         });
@@ -282,23 +283,23 @@ const ChatWindow = ({
       console.error('Error marking messages as read:', error);
     }
   };
-  
+
   // Send a new message
   const handleSendMessage = async (text, imageUrl) => {
     if ((!text || text.trim() === '') && !imageUrl) return;
-    
+
     try {
       // Get user data from localStorage if currentUserUid is not available 
       // (this happens when using localStorage persistence)
       let senderUid = currentUserUid;
       let senderName = currentUserName;
-      
+
       if (!senderUid) {
         if (isAdmin) {
           // For admin users
           senderUid = localStorage.getItem('adminId');
           senderName = "Customer Care"; // Always use "Customer Care" for admin instead of email
-          
+
           if (!senderUid) {
             console.error('No admin ID available');
             return;
@@ -306,10 +307,10 @@ const ChatWindow = ({
         } else {
           // For seller users
           senderUid = localStorage.getItem('sellerId');
-          senderName = localStorage.getItem('sellerName') || 
-                     localStorage.getItem('sellerShopName') || 
-                     localStorage.getItem('sellerEmail') || 'Seller';
-          
+          senderName = localStorage.getItem('sellerName') ||
+            localStorage.getItem('sellerShopName') ||
+            localStorage.getItem('sellerEmail') || 'Seller';
+
           if (!senderUid) {
             console.error('No seller ID available');
             return;
@@ -319,7 +320,7 @@ const ChatWindow = ({
         // Always use "Customer Care" as the sender name for admin users
         senderName = "Customer Care";
       }
-      
+
       // Add the message to the messages subcollection
       await addDoc(collection(db, 'chats', selectedChatId, 'messages'), {
         text: text || '',
@@ -329,10 +330,10 @@ const ChatWindow = ({
         timestamp: serverTimestamp(),
         isRead: false
       });
-      
+
       // Update the chat document with the last message
       const chatRef = doc(db, 'chats', selectedChatId);
-      
+
       await updateDoc(chatRef, {
         lastMessage: {
           text: text || '',
@@ -344,7 +345,7 @@ const ChatWindow = ({
         // Increment unread count for the other user
         [isAdmin ? 'sellerUnreadCount' : 'adminUnreadCount']: arrayUnion(1)
       });
-      
+
       // Call the onMessageSent callback if it exists (for both admin and seller)
       if (onMessageSent) {
         console.log(`Message sent by ${isAdmin ? 'admin' : 'seller'}, calling onMessageSent callback`);
@@ -364,14 +365,14 @@ const ChatWindow = ({
         setLocalUserDetails(null);
         return;
       }
-      
+
       try {
         const chatDoc = await getDoc(doc(db, 'chats', selectedChatId));
         if (!chatDoc.exists()) return;
-        
+
         const chatData = chatDoc.data();
         const otherUserUid = isAdmin ? chatData.sellerUid : chatData.adminUid;
-        
+
         // If the current user is a seller and the other user is an admin, display "Customer Care"
         if (!isAdmin) {
           setLocalUserDetails({
@@ -380,12 +381,12 @@ const ChatWindow = ({
           });
           return;
         }
-        
+
         // If the current user is an admin, make sure to display seller's email
         const userDoc = await getDoc(doc(db, isAdmin ? 'sellers' : 'admins', otherUserUid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          
+
           if (isAdmin) {
             // For admin dashboard, always show seller's email
             setLocalUserDetails({
@@ -404,16 +405,16 @@ const ChatWindow = ({
         console.error('Error fetching chat details:', error);
       }
     };
-    
+
     fetchOtherUserDetails();
   }, [selectedChatId, isAdmin]);
 
   // Use either the props otherUserDetails or our local state
   const displayUserDetails = otherUserDetails || localUserDetails;
-  
+
   // Ensure admin email is hidden and displayed as Customer Care
-  const displayName = displayUserDetails?.displayName === "admin@novadelight.com" || displayUserDetails?.displayName === "Customer Care" 
-    ? "Customer Care" 
+  const displayName = displayUserDetails?.displayName === "admin@novadelight.com" || displayUserDetails?.displayName === "Customer Care"
+    ? "Customer Care"
     : displayUserDetails?.displayName || 'Chat';
 
   // Handle menu open
@@ -439,33 +440,33 @@ const ChatWindow = ({
   // Handle message deletion (new function)
   const handleMessageDelete = async (messageId) => {
     if (!messageId || !selectedChatId) return;
-    
+
     try {
       setDeleteLoading(true);
-      
+
       // Delete the message from the Firestore collection
       await deleteDoc(doc(db, 'chats', selectedChatId, 'messages', messageId));
-      
+
       // Update the messages list in state
       setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
-      
+
       // Check if we need to update the last message in the chat document
       const chatRef = doc(db, 'chats', selectedChatId);
       const chatDoc = await getDoc(chatRef);
-      
+
       if (chatDoc.exists()) {
         const chatData = chatDoc.data();
-        
+
         // If the deleted message was the last message, update to the previous message
         // Get all remaining messages
         const messagesRef = collection(db, 'chats', selectedChatId, 'messages');
         const messagesQuery = query(messagesRef, orderBy('timestamp', 'desc'), where("id", "!=", messageId));
         const messagesSnapshot = await getDocs(messagesQuery);
-        
+
         if (!messagesSnapshot.empty) {
           // Get the most recent message (which is now the last message)
           const lastMessage = messagesSnapshot.docs[0].data();
-          
+
           // Update the chat document with the new last message
           await updateDoc(chatRef, {
             lastMessage: {
@@ -478,7 +479,7 @@ const ChatWindow = ({
           });
         }
       }
-      
+
       setDeleteLoading(false);
       console.log(`Message ${messageId} deleted successfully`);
     } catch (error) {
@@ -511,34 +512,34 @@ const ChatWindow = ({
   // Function to manually refresh messages
   const refreshMessages = async () => {
     if (!selectedChatId || refreshing) return;
-    
+
     setRefreshing(true);
-    
+
     try {
       // Requery the messages collection
       const messagesRef = collection(db, 'chats', selectedChatId, 'messages');
       const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
-      
+
       const snapshot = await getDocs(messagesQuery);
       const messagesList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      
+
       setMessages(messagesList);
-      
+
       // Mark messages as read
       if (messagesList.length > 0) {
         await markMessagesAsRead();
       }
-      
+
       // Check if seller status has changed
       if (!isAdmin) {
         const sellerId = localStorage.getItem('sellerId');
         if (sellerId) {
           const sellerRef = doc(db, 'sellers', sellerId);
           const sellerDoc = await getDoc(sellerRef);
-          
+
           if (sellerDoc.exists()) {
             const firebaseStatus = sellerDoc.data().status;
             localStorage.setItem('sellerStatus', firebaseStatus);
@@ -546,7 +547,7 @@ const ChatWindow = ({
           }
         }
       }
-      
+
       console.log('Chat refreshed manually');
     } catch (error) {
       console.error('Error refreshing messages:', error);
@@ -560,17 +561,17 @@ const ChatWindow = ({
       <ChatWindowContainer>
         <ChatHeader>
           {onBackClick && (
-            <IconButton 
-              onClick={onBackClick} 
-              sx={{ 
-                position: 'absolute', 
-                left: 8, 
-                top: 8, 
+            <IconButton
+              onClick={onBackClick}
+              sx={{
+                position: 'absolute',
+                left: 8,
+                top: 8,
                 color: 'white',
                 [theme.breakpoints.down('sm')]: {
                   top: 12
                 }
-              }} 
+              }}
               size="small"
             >
               <ArrowBackIcon />
@@ -581,7 +582,7 @@ const ChatWindow = ({
           </Typography>
           <AvatarIcon>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
             </svg>
           </AvatarIcon>
           <Typography variant="h5" sx={{ fontWeight: 'medium', mb: 1 }}>
@@ -593,7 +594,7 @@ const ChatWindow = ({
               Typically replies under 6 minutes
             </Typography>
           </Box>
-          
+
           <HeaderSection>
             <Typography variant="body2">
               Seller Support Chat
@@ -612,17 +613,17 @@ const ChatWindow = ({
   return (
     <ChatWindowContainer>
       <ChatHeader>
-        <IconButton 
-          onClick={onBackClick} 
-          sx={{ 
-            position: 'absolute', 
-            left: 8, 
-            top: 8, 
+        <IconButton
+          onClick={onBackClick}
+          sx={{
+            position: 'absolute',
+            left: 8,
+            top: 8,
             color: 'white',
             [theme.breakpoints.down('sm')]: {
               top: 12
             }
-          }} 
+          }}
           size="small"
         >
           <ArrowBackIcon />
@@ -630,16 +631,16 @@ const ChatWindow = ({
         <Typography variant="h6">
           {displayName}
         </Typography>
-        
+
         {/* Refresh button - visible for both admin and sellers */}
         <Tooltip title="Refresh messages">
-          <IconButton 
-            onClick={refreshMessages} 
+          <IconButton
+            onClick={refreshMessages}
             disabled={refreshing}
-            sx={{ 
-              position: 'absolute', 
+            sx={{
+              position: 'absolute',
               right: isAdmin ? 40 : 8,  // Position to the left of the menu button for admin
-              top: 8, 
+              top: 8,
               color: 'white',
               [theme.breakpoints.down('sm')]: {
                 top: 12
@@ -647,21 +648,21 @@ const ChatWindow = ({
             }}
             size="small"
           >
-            {refreshing ? 
-              <CircularProgress size={20} color="inherit" /> : 
+            {refreshing ?
+              <CircularProgress size={20} color="inherit" /> :
               <RefreshIcon fontSize="small" />
             }
           </IconButton>
         </Tooltip>
-        
-        {isAdmin && (
-          <IconButton 
-            size="small" 
+
+        {isAdmin && !isMiniAdmin && (
+          <IconButton
+            size="small"
             onClick={handleMenuOpen}
-            sx={{ 
-              position: 'absolute', 
-              right: 8, 
-              top: 8, 
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
               color: 'white',
               [theme.breakpoints.down('sm')]: {
                 top: 12
@@ -673,13 +674,13 @@ const ChatWindow = ({
             <MoreVertIcon />
           </IconButton>
         )}
-        
+
         <HeaderSection>
           <Typography variant="body2">
             Seller Support Chat
           </Typography>
         </HeaderSection>
-        
+
         <Menu
           anchorEl={menuAnchorEl}
           open={Boolean(menuAnchorEl)}
@@ -699,10 +700,10 @@ const ChatWindow = ({
           </MenuItem>
         </Menu>
       </ChatHeader>
-      
+
       {/* Add verification status notification for non-verified sellers */}
       {!isAdmin && sellerStatus === 'pending' && (
-        <Box 
+        <Box
           sx={{
             p: 2,
             bgcolor: '#FFF3E0',
@@ -717,10 +718,10 @@ const ChatWindow = ({
           Account is not verified. contact your customer care.
         </Box>
       )}
-      
+
       {/* Add frozen account notification for sellers in mobile browser display */}
       {!isAdmin && sellerStatus === 'frozen' && (
-        <Box 
+        <Box
           sx={{
             p: 2,
             bgcolor: '#FFEBEE',
@@ -735,7 +736,7 @@ const ChatWindow = ({
           Your account is frozen.
         </Box>
       )}
-      
+
       <MessageContainer>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -744,24 +745,24 @@ const ChatWindow = ({
         ) : (
           <>
             {messages.map((message) => (
-              <Message 
-                key={message.id} 
-                message={message} 
+              <Message
+                key={message.id}
+                message={message}
                 isAdmin={isAdmin}
-                onDeleteMessage={isAdmin ? confirmDeleteMessage : undefined} 
+                onDeleteMessage={isAdmin && !isMiniAdmin ? confirmDeleteMessage : undefined}
               />
             ))}
             <div ref={messagesEndRef} />
           </>
         )}
       </MessageContainer>
-      
+
       <InputContainer>
-        <ChatInput 
-          onSendMessage={handleSendMessage} 
+        <ChatInput
+          onSendMessage={handleSendMessage}
           isAdmin={isAdmin}
           selectedChatId={selectedChatId}
-          disabled={!isAdmin && sellerStatus === "inactive"}
+          disabled={isMiniAdmin || (!isAdmin && sellerStatus === "inactive")}
         />
       </InputContainer>
 
@@ -780,9 +781,9 @@ const ChatWindow = ({
           <Button onClick={handleCancelDelete} color="primary">
             Cancel
           </Button>
-          <Button 
-            onClick={handleConfirmDelete} 
-            color="error" 
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
             variant="contained"
             disabled={deleteLoading}
             startIcon={deleteLoading ? <CircularProgress size={20} color="inherit" /> : <DeleteIcon />}
