@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Paper, 
-  TextField, 
-  Button, 
-  Typography, 
+import {
+  Container,
+  Paper,
+  TextField,
+  Button,
+  Typography,
   Box,
   FormControlLabel,
-  Checkbox 
+  Checkbox
 } from '@mui/material';
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -29,7 +29,7 @@ const AdminLogin = ({ setIsAdmin }) => {
   useEffect(() => {
     const rememberedAdmin = localStorage.getItem('rememberedAdmin') === 'true';
     const adminId = localStorage.getItem('adminId');
-    
+
     if (rememberedAdmin && adminId) {
       console.log('Admin already logged in from localStorage');
       setIsAdmin(true);
@@ -39,42 +39,52 @@ const AdminLogin = ({ setIsAdmin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Get admin password from localStorage or use the default
-    const storedPassword = localStorage.getItem('adminPassword');
-    const currentAdminPassword = storedPassword || ADMIN_PASSWORD;
-    
-    // Check if the provided credentials match the admin credentials
-    if (email === ADMIN_EMAIL && password === currentAdminPassword) {
-      try {
-        // Use mock authentication instead of Firebase
-        // Save admin data in localStorage
+
+    try {
+      // Set persistence if remember me is checked
+      if (rememberMe) {
+        await setPersistence(auth, browserLocalPersistence);
+      }
+
+      // Try to authenticate with Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      // Save admin data in localStorage
+      localStorage.setItem('rememberedAdmin', rememberMe ? 'true' : 'false');
+      localStorage.setItem('adminId', userCredential.user.uid);
+      localStorage.setItem('adminEmail', email);
+      localStorage.setItem('adminLoginTime', new Date().toISOString());
+
+      setIsAdmin(true);
+      navigate('/admin/dashboard');
+    } catch (error) {
+      // If Firebase auth fails, try the default hardcoded credentials as fallback
+      const storedPassword = localStorage.getItem('adminPassword');
+      const currentAdminPassword = storedPassword || ADMIN_PASSWORD;
+
+      if (email === ADMIN_EMAIL && password === currentAdminPassword) {
+        // Default admin login (fallback)
         localStorage.setItem('rememberedAdmin', rememberMe ? 'true' : 'false');
-        localStorage.setItem('adminId', 'admin-' + Date.now());
+        localStorage.setItem('adminId', 'admin-default');
         localStorage.setItem('adminEmail', ADMIN_EMAIL);
         localStorage.setItem('adminLoginTime', new Date().toISOString());
-        
-        // If we need to maintain Firebase auth for other features, 
-        // we can silently try to auth but not depend on its success
-        try {
-          if (rememberMe) {
-            await setPersistence(auth, browserLocalPersistence);
-          }
-          await signInWithEmailAndPassword(auth, email, password);
-        } catch (firebaseError) {
-          // Ignore Firebase auth errors, we're using our own auth
-          console.log('Firebase auth not available, using mock auth');
-        }
-        
+
         setIsAdmin(true);
         navigate('/admin/dashboard');
-      } catch (error) {
-        setError('Something went wrong. Please try again.');
-        console.error('Error during login process:', error);
+      } else {
+        // Show appropriate error message
+        if (error.code === 'auth/user-not-found') {
+          setError('No admin account found with this email.');
+        } else if (error.code === 'auth/wrong-password') {
+          setError('Incorrect password. Please try again.');
+        } else if (error.code === 'auth/invalid-email') {
+          setError('Invalid email address.');
+        } else if (error.code === 'auth/too-many-requests') {
+          setError('Too many failed login attempts. Please try again later.');
+        } else {
+          setError('Invalid admin credentials. Access denied.');
+        }
       }
-    } else {
-      // If credentials don't match, show error
-      setError('Invalid admin credentials. Access denied.');
     }
   };
 
@@ -111,7 +121,7 @@ const AdminLogin = ({ setIsAdmin }) => {
             />
             <FormControlLabel
               control={
-                <Checkbox 
+                <Checkbox
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   color="primary"
@@ -124,17 +134,26 @@ const AdminLogin = ({ setIsAdmin }) => {
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3,
-        background: 'linear-gradient(90deg, #1976d2 0%, #2196f3 35%, #64b5f6 100%)',
+              sx={{
+                mt: 3,
+                background: 'linear-gradient(90deg, #1976d2 0%, #2196f3 35%, #64b5f6 100%)',
                 boxShadow: '0 3px 5px 2px rgba(33, 150, 243, .3)',
                 '&:hover': {
                   background: 'linear-gradient(90deg, #1565c0 0%, #1976d2 35%, #2196f3 100%)',
                   boxShadow: '0 4px 8px 2px rgba(33, 150, 243, .4)'
                 }
 
-               }}
+              }}
             >
               Login
+            </Button>
+            <Button
+              fullWidth
+              variant="text"
+              sx={{ mt: 1 }}
+              onClick={() => navigate('/admin/register')}
+            >
+              Register as Admin
             </Button>
           </form>
         </Paper>
