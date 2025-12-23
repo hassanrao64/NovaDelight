@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  Container, 
-  Paper, 
-  TextField, 
-  Button, 
-  Typography, 
+import {
+  Container,
+  Paper,
+  TextField,
+  Button,
+  Typography,
   Box,
-  Alert 
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -18,13 +22,14 @@ const AdminRegister = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState('admin'); // Default to admin
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -40,13 +45,13 @@ const AdminRegister = () => {
     try {
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
+
       // Add admin details to Firestore
       await setDoc(doc(db, 'admins', userCredential.user.uid), {
         name,
         email,
+        role, // Store the selected role
         createdAt: new Date().toISOString(),
-        role: 'admin'
       });
 
       // Store admin password in localStorage for login verification
@@ -105,6 +110,19 @@ const AdminRegister = () => {
               margin="normal"
               required
             />
+            <FormControl fullWidth margin="normal" required>
+              <InputLabel id="role-label">Role</InputLabel>
+              <Select
+                labelId="role-label"
+                id="role-select"
+                value={role}
+                label="Role"
+                onChange={(e) => setRole(e.target.value)}
+              >
+                <MenuItem value="admin">Admin</MenuItem>
+                <MenuItem value="mini-admin">Mini Admin (Read-Only)</MenuItem>
+              </Select>
+            </FormControl>
             <TextField
               fullWidth
               label="Password"
@@ -128,7 +146,7 @@ const AdminRegister = () => {
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ 
+              sx={{
                 mt: 3,
                 background: 'linear-gradient(90deg, #1976d2 0%, #2196f3 35%, #64b5f6 100%)',
                 boxShadow: '0 3px 5px 2px rgba(33, 150, 243, .3)',
