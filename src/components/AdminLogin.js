@@ -10,7 +10,8 @@ import {
   Checkbox
 } from '@mui/material';
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -18,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 const ADMIN_EMAIL = 'admin@novadelight.com';
 const ADMIN_PASSWORD = '$Nova@Delight18';
 
-const AdminLogin = ({ setIsAdmin }) => {
+const AdminLogin = ({ setIsAdmin, setAdminRole }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -49,13 +50,26 @@ const AdminLogin = ({ setIsAdmin }) => {
       // Try to authenticate with Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
+      // Retrieve admin role from Firestore
+      let adminRole = 'admin'; // Default to admin
+      try {
+        const adminDoc = await getDoc(doc(db, 'admins', userCredential.user.uid));
+        if (adminDoc.exists()) {
+          adminRole = adminDoc.data().role || 'admin';
+        }
+      } catch (firestoreError) {
+        console.log('Could not retrieve role from Firestore, defaulting to admin');
+      }
+
       // Save admin data in localStorage
       localStorage.setItem('rememberedAdmin', rememberMe ? 'true' : 'false');
       localStorage.setItem('adminId', userCredential.user.uid);
       localStorage.setItem('adminEmail', email);
+      localStorage.setItem('adminRole', adminRole); // Store the role
       localStorage.setItem('adminLoginTime', new Date().toISOString());
 
       setIsAdmin(true);
+      if (setAdminRole) setAdminRole(adminRole); // Update app state
       navigate('/admin/dashboard');
     } catch (error) {
       // If Firebase auth fails, try the default hardcoded credentials as fallback
@@ -67,9 +81,11 @@ const AdminLogin = ({ setIsAdmin }) => {
         localStorage.setItem('rememberedAdmin', rememberMe ? 'true' : 'false');
         localStorage.setItem('adminId', 'admin-default');
         localStorage.setItem('adminEmail', ADMIN_EMAIL);
+        localStorage.setItem('adminRole', 'admin'); // Default admin has full permissions
         localStorage.setItem('adminLoginTime', new Date().toISOString());
 
         setIsAdmin(true);
+        if (setAdminRole) setAdminRole('admin'); // Update app state
         navigate('/admin/dashboard');
       } else {
         // Show appropriate error message
