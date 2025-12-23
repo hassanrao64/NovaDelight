@@ -24,7 +24,7 @@ import { auth, db } from '../firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import SectionCard from './SectionCard';
 
-const WithdrawalRequestsManager = () => {
+const WithdrawalRequestsManager = ({ isMiniAdmin }) => {
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -45,7 +45,7 @@ const WithdrawalRequestsManager = () => {
         orderBy('timestamp', 'desc')
       );
       const requestDocs = await getDocs(requestsQuery);
-      
+
       const requests = await Promise.all(requestDocs.docs.map(async (doc) => {
         const data = doc.data();
         return {
@@ -54,7 +54,7 @@ const WithdrawalRequestsManager = () => {
           timestamp: data.timestamp?.toDate() || new Date()
         };
       }));
-      
+
       setWithdrawalRequests(requests);
     } catch (error) {
       console.error('Error fetching withdrawal requests:', error);
@@ -66,7 +66,7 @@ const WithdrawalRequestsManager = () => {
 
   const handleApprove = async (request) => {
     let confirmMessage = `Are you sure you want to approve the withdrawal of $${request.amount.toFixed(2)} for ${request.sellerName}?`;
-    
+
     // Add payment method specific details to the confirmation
     if (request.paymentMethod === 'Bank' && request.paymentDetails) {
       confirmMessage += `\n\nBank payment details:\nBank: ${request.paymentDetails.bankName || '-'}\nAccount: ${request.paymentDetails.bankAccountName || '-'}\nNumber: ${request.paymentDetails.bankAccountNumber || '-'}\nIFSC: ${request.paymentDetails.ifscCode || '-'}`;
@@ -79,44 +79,44 @@ const WithdrawalRequestsManager = () => {
     if (!window.confirm(confirmMessage)) {
       return;
     }
-    
+
     setProcessingRequest(true);
     try {
       const requestRef = doc(db, 'withdrawalRequests', request.id);
       const sellerRef = doc(db, 'sellers', request.sellerId);
-      
+
       // Get the current seller data
       const sellerDoc = await getDoc(sellerRef);
       if (!sellerDoc.exists()) {
         throw new Error('Seller not found');
       }
-      
+
       const sellerData = sellerDoc.data();
       const currentBalance = sellerData.walletBalance || 0;
-      
+
       // Check if seller has sufficient balance
       if (currentBalance < request.amount) {
         alert(`Seller has insufficient balance. Available: $${currentBalance.toFixed(2)}, Requested: $${request.amount.toFixed(2)}`);
         setProcessingRequest(false);
         return;
       }
-      
+
       // Calculate new balance
       const newBalance = currentBalance - request.amount;
-      
+
       // Update withdrawal request status
       await updateDoc(requestRef, {
         status: 'approved',
         approvedBy: auth.currentUser.email,
         approvalDate: serverTimestamp()
       });
-      
+
       // Update seller's wallet balance
       await updateDoc(sellerRef, {
         walletBalance: newBalance,
         lastUpdated: serverTimestamp()
       });
-      
+
       // Add transaction record
       await addDoc(collection(db, 'transactions'), {
         sellerId: request.sellerId,
@@ -128,10 +128,10 @@ const WithdrawalRequestsManager = () => {
         newBalance: newBalance,
         note: `Withdrawal approved by admin (${auth.currentUser.email})`
       });
-      
+
       // Refresh withdrawal requests
       await fetchWithdrawalRequests();
-      
+
       alert(`Withdrawal request approved successfully. $${request.amount.toFixed(2)} has been withdrawn from seller's wallet.`);
     } catch (error) {
       console.error('Error approving withdrawal request:', error);
@@ -149,16 +149,16 @@ const WithdrawalRequestsManager = () => {
 
   const handleReject = async () => {
     if (!selectedRequest) return;
-    
+
     if (!rejectionReason.trim()) {
       alert('Please provide a reason for rejection');
       return;
     }
-    
+
     setProcessingRequest(true);
     try {
       const requestRef = doc(db, 'withdrawalRequests', selectedRequest.id);
-      
+
       // Update withdrawal request status
       await updateDoc(requestRef, {
         status: 'rejected',
@@ -166,14 +166,14 @@ const WithdrawalRequestsManager = () => {
         rejectedBy: auth.currentUser.email,
         rejectionDate: serverTimestamp()
       });
-      
+
       // Refresh withdrawal requests
       await fetchWithdrawalRequests();
-      
+
       // Close dialog
       setOpenRejectDialog(false);
       setSelectedRequest(null);
-      
+
       alert('Withdrawal request rejected successfully.');
     } catch (error) {
       console.error('Error rejecting withdrawal request:', error);
@@ -260,26 +260,30 @@ IFSC Code: ${request.paymentDetails.ifscCode || '-'}`}>
                         {request.note || '-'}
                       </TableCell>
                       <TableCell>
-                        <Stack direction="row" spacing={1}>
-                          <Button
-                            variant="contained"
-                            color="success"
-                            size="small"
-                            onClick={() => handleApprove(request)}
-                            disabled={processingRequest}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            variant="contained"
-                            color="error"
-                            size="small"
-                            onClick={() => openRejectConfirmation(request)}
-                            disabled={processingRequest}
-                          >
-                            Reject
-                          </Button>
-                        </Stack>
+                        {!isMiniAdmin ? (
+                          <Stack direction="row" spacing={1}>
+                            <Button
+                              variant="contained"
+                              color="success"
+                              size="small"
+                              onClick={() => handleApprove(request)}
+                              disabled={processingRequest}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="contained"
+                              color="error"
+                              size="small"
+                              onClick={() => openRejectConfirmation(request)}
+                              disabled={processingRequest}
+                            >
+                              Reject
+                            </Button>
+                          </Stack>
+                        ) : (
+                          <Chip label="Read-Only" size="small" variant="outlined" />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -325,8 +329,8 @@ IFSC Code: ${request.paymentDetails.ifscCode || '-'}`}>
                       <TableCell>${request.amount.toFixed(2)}</TableCell>
                       <TableCell>{request.paymentMethod}</TableCell>
                       <TableCell>
-                        <Chip 
-                          label={request.status.charAt(0).toUpperCase() + request.status.slice(1)} 
+                        <Chip
+                          label={request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                           color={getStatusColor(request.status)}
                           size="small"
                         />
@@ -373,7 +377,7 @@ IFSC Code: ${request.paymentDetails.ifscCode || '-'}`}>
           <Typography variant="body2" gutterBottom>
             Please provide a reason for rejecting this withdrawal request of ${selectedRequest?.amount.toFixed(2)} from {selectedRequest?.sellerName}.
           </Typography>
-          
+
           {selectedRequest?.paymentMethod === 'Bank' && selectedRequest?.paymentDetails ? (
             <Box sx={{ mt: 2, mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>Bank Payment Details:</Typography>
@@ -415,9 +419,9 @@ IFSC Code: ${request.paymentDetails.ifscCode || '-'}`}>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenRejectDialog(false)}>Cancel</Button>
-          <Button 
-            onClick={handleReject} 
-            color="error" 
+          <Button
+            onClick={handleReject}
+            color="error"
             variant="contained"
             disabled={!rejectionReason.trim() || processingRequest}
           >
