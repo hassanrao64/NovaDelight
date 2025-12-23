@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import AdminLogin from './components/AdminLogin';
+import AdminRegister from './components/AdminRegister';
 import AdminDashboard from './components/AdminDashboard';
 import CustomerLogin from './components/CustomerLogin';
 import CustomerRegister from './components/CustomerRegister';
@@ -25,7 +26,7 @@ function App() {
   // Force check auth state directly from Firebase for initial state
   const initialAuthState = !!auth.currentUser;
   console.log("Initial auth state in App.js (constructor):", initialAuthState);
-  
+
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCustomer, setIsCustomer] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
@@ -41,21 +42,21 @@ function App() {
   // Global authentication listener
   useEffect(() => {
     console.log("Setting up global auth state listener in App.js");
-    
+
     // Force check auth state again after component mount
     const currentUser = auth.currentUser;
     console.log("Auth state in App.js (useEffect):", currentUser ? `User logged in: ${currentUser.email}` : "User logged out");
     setIsAuthenticated(!!currentUser);
-    
+
     // Check for stored seller credentials
     const rememberedSeller = localStorage.getItem('rememberedSeller') === 'true';
     const sellerId = localStorage.getItem('sellerId');
     const sellerData = localStorage.getItem('sellerData');
-    
+
     // Check for stored admin credentials
     const rememberedAdmin = localStorage.getItem('rememberedAdmin') === 'true';
     const adminId = localStorage.getItem('adminId');
-    
+
     // Immediately set roles based on localStorage to prevent flicker
     if (rememberedAdmin && adminId) {
       console.log("Found remembered admin in localStorage");
@@ -67,28 +68,28 @@ function App() {
       setIsSeller(true);
       setIsAuthenticated(true);
     }
-    
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       console.log("Global auth state changed:", user ? `User logged in: ${user.email}` : "User logged out");
       setIsAuthenticated(!!user);
-      
+
       // If user logs out, reset all role states unless we have remembered credentials
       if (!user) {
         // Only reset admin state if there's no remembered admin
         if (!(localStorage.getItem('rememberedAdmin') === 'true' && localStorage.getItem('adminId'))) {
           setIsAdmin(false);
         }
-        
+
         // Only reset customer state
         setIsCustomer(false);
-        
+
         // Only reset seller state if there's no remembered seller
         if (!(localStorage.getItem('rememberedSeller') === 'true' && localStorage.getItem('sellerId'))) {
           setIsSeller(false);
         }
       }
     });
-    
+
     return () => unsubscribe();
   }, []);
 
@@ -98,8 +99,8 @@ function App() {
       <Setup />
       <NotificationSoundProvider>
         <Router>
-          <AppContent 
-            isAdmin={isAdmin} 
+          <AppContent
+            isAdmin={isAdmin}
             setIsAdmin={setIsAdmin}
             isCustomer={isCustomer}
             setIsCustomer={setIsCustomer}
@@ -116,28 +117,28 @@ function App() {
 }
 
 // Extract the AppContent to a separate component to use hooks that require Router context
-function AppContent({ 
-  isAdmin, setIsAdmin, 
-  isCustomer, setIsCustomer, 
-  isSeller, setIsSeller, 
-  isAuthenticated, 
-  searchTerm, onSearch 
+function AppContent({
+  isAdmin, setIsAdmin,
+  isCustomer, setIsCustomer,
+  isSeller, setIsSeller,
+  isAuthenticated,
+  searchTerm, onSearch
 }) {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const isSellerDashboard = location.pathname === '/seller/dashboard';
-  
+
   // Extract search term from URL query parameters (once on mount)
   useEffect(() => {
     // Only run on component mount to initialize the search term from URL
     const querySearchTerm = searchParams.get('search');
     console.log("Initial URL search term:", querySearchTerm);
-    
+
     if (querySearchTerm !== null) {
       // Always update app state from URL on mount
       onSearch(querySearchTerm);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array means this only runs once on mount
 
   // Watch for changes to the URL search parameter
@@ -145,7 +146,7 @@ function AppContent({
     // Get the current search parameter from the URL
     const currentSearchParam = searchParams.get('search');
     console.log("URL search parameter changed:", currentSearchParam, "Current App searchTerm:", searchTerm);
-    
+
     // If URL has no search parameter but we have a searchTerm in app state
     if (!currentSearchParam && searchTerm && location.pathname === '/') {
       console.log("Clearing search term because URL has no search parameter");
@@ -178,7 +179,7 @@ function AppContent({
     const rememberedSeller = localStorage.getItem('rememberedSeller') === 'true';
     const sellerId = localStorage.getItem('sellerId');
     const sellerData = localStorage.getItem('sellerData');
-    
+
     if (!isSeller && !(rememberedSeller && sellerId && sellerData)) {
       return <Navigate to="/seller/login" />;
     }
@@ -189,8 +190,8 @@ function AppContent({
     <>
       {!isSellerDashboard && (
         <>
-          <Navbar 
-            isAdmin={isAdmin} 
+          <Navbar
+            isAdmin={isAdmin}
             setIsAdmin={setIsAdmin}
             isCustomer={isCustomer}
             setIsCustomer={setIsCustomer}
@@ -202,16 +203,19 @@ function AppContent({
           <Toolbar />
         </>
       )}
-      <Container sx={{ 
+      <Container sx={{
         padding: isSellerDashboard ? 0 : undefined,
         maxWidth: isSellerDashboard ? '100%' : undefined
       }}>
         <Routes>
           <Route path="/" element={<HomePage isAuthenticated={isAuthenticated} searchTerm={searchTerm} />} />
-          
+
           {/* Admin Routes */}
           <Route path="/admin/login" element={
             <AdminLogin setIsAdmin={setIsAdmin} />
+          } />
+          <Route path="/admin/register" element={
+            <AdminRegister />
           } />
           <Route path="/admin/dashboard" element={
             <ProtectedAdminRoute>
