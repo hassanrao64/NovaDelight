@@ -28,6 +28,8 @@ function App() {
   console.log("Initial auth state in App.js (constructor):", initialAuthState);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  // Add state to track admin role (admin vs mini-admin)
+  const [adminRole, setAdminRole] = useState('admin');
   const [isCustomer, setIsCustomer] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(initialAuthState);
@@ -61,6 +63,13 @@ function App() {
     if (rememberedAdmin && adminId) {
       console.log("Found remembered admin in localStorage");
       setIsAdmin(true);
+
+      // Restore admin role from local storage
+      const storedRole = localStorage.getItem('adminRole');
+      if (storedRole) {
+        setAdminRole(storedRole);
+      }
+
       setIsAuthenticated(true);
     }
     if (rememberedSeller && sellerId && sellerData) {
@@ -78,6 +87,7 @@ function App() {
         // Only reset admin state if there's no remembered admin
         if (!(localStorage.getItem('rememberedAdmin') === 'true' && localStorage.getItem('adminId'))) {
           setIsAdmin(false);
+          setAdminRole('admin'); // Reset to default
         }
 
         // Only reset customer state
@@ -109,6 +119,8 @@ function App() {
             isAuthenticated={isAuthenticated}
             searchTerm={searchTerm}
             onSearch={handleSearch}
+            adminRole={adminRole}
+            setAdminRole={setAdminRole}
           />
         </Router>
       </NotificationSoundProvider>
@@ -122,7 +134,8 @@ function AppContent({
   isCustomer, setIsCustomer,
   isSeller, setIsSeller,
   isAuthenticated,
-  searchTerm, onSearch
+  searchTerm, onSearch,
+  adminRole, setAdminRole
 }) {
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -212,14 +225,14 @@ function AppContent({
 
           {/* Admin Routes */}
           <Route path="/admin/login" element={
-            <AdminLogin setIsAdmin={setIsAdmin} />
+            <AdminLogin setIsAdmin={setIsAdmin} setAdminRole={setAdminRole} />
           } />
           <Route path="/admin/register" element={
             <AdminRegister />
           } />
           <Route path="/admin/dashboard" element={
             <ProtectedAdminRoute>
-              <AdminDashboard />
+              <AdminDashboard adminRole={adminRole} />
             </ProtectedAdminRoute>
           } />
 
