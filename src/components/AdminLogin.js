@@ -161,16 +161,17 @@ const AdminLogin = ({ setIsAdmin, setAdminRole }) => {
 
               }}
             >
+              {/* xyz */}
               Login
             </Button>
-            <Button
+            {/* <Button
               fullWidth
               variant="text"
               sx={{ mt: 1 }}
               onClick={() => navigate('/admin/register')}
             >
               Register as Admin
-            </Button>
+            </Button>*/}
           </form>
         </Paper>
       </Box>
