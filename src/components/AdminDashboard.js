@@ -72,7 +72,7 @@ import {
 } from '@mui/icons-material';
 import { db, auth } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, setDoc, addDoc, orderBy, onSnapshot, serverTimestamp, getDoc, arrayUnion, arrayRemove, increment, documentId } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, setDoc, addDoc, orderBy, onSnapshot, serverTimestamp, getDoc, arrayUnion, arrayRemove, increment, documentId, deleteField } from 'firebase/firestore';
 import { Chat } from './ChatComponents';
 import StatusUpdateModal from './StatusUpdateModal';
 import WithdrawalRequestsManager from './WithdrawalRequestsManager';
@@ -2319,6 +2319,69 @@ const AdminDashboard = ({ adminRole }) => {
 
       // Log the original order data
       console.log('ORIGINAL ORDER DATA:', JSON.stringify(orderData, null, 2));
+
+      // Handle Reversal: if changing from 'completed' back to 'on-the-way'
+      if (orderData.status === 'completed' && newStatus === 'on-the-way' && orderData.sellerId) {
+        try {
+          const transferAmount = Number(orderData.pendingTransferred || 0);
+
+          if (transferAmount > 0) {
+            console.log('REVERSING TRANSFER: Moving amount back to pending', transferAmount);
+
+            // Get seller data
+            const sellerRef = doc(db, 'sellers', orderData.sellerId);
+            const sellerDoc = await getDoc(sellerRef);
+
+            if (sellerDoc.exists()) {
+              const sellerData = sellerDoc.data();
+              const currentWalletBalance = Number(sellerData.walletBalance || 0);
+              const currentPendingAmount = Number(sellerData.pendingAmount || 0);
+
+              const newWalletBalance = currentWalletBalance - transferAmount;
+              const newPendingAmount = currentPendingAmount + transferAmount;
+
+              // Update seller
+              await updateDoc(sellerRef, {
+                walletBalance: newWalletBalance,
+                pendingAmount: newPendingAmount,
+                lastUpdated: serverTimestamp()
+              });
+
+              // Add transaction record
+              await addDoc(collection(db, 'transactions'), {
+                orderId: orderId,
+                sellerId: orderData.sellerId,
+                amount: transferAmount,
+                type: 'order_status_reversed',
+                timestamp: serverTimestamp(),
+                description: `Order #${orderData.orderNumber || orderId.substring(0, 8)} status changed from completed back to on-the-way. $${transferAmount.toFixed(2)} moved back from wallet to pending balance.`,
+                walletBalanceBefore: currentWalletBalance,
+                walletBalanceAfter: newWalletBalance,
+                pendingAmountBefore: currentPendingAmount,
+                pendingAmountAfter: newPendingAmount,
+                processedBy: 'admin'
+              });
+
+              // Clear transfer-related fields from the order document
+              await updateDoc(orderRef, {
+                pendingTransferred: deleteField(),
+                baseAmountTransferred: deleteField(),
+                profitAmountTransferred: deleteField(),
+                transferredAt: deleteField(),
+                walletBalanceBefore: deleteField(),
+                walletBalanceAfter: deleteField(),
+                pendingAmountBefore: deleteField(),
+                pendingAmountAfter: deleteField()
+              });
+
+              console.log(`SUCCESS: Reversed $${transferAmount.toFixed(2)} for order ${orderId}`);
+            }
+          }
+        } catch (reversalError) {
+          console.error('ERROR during wallet reversal process:', reversalError);
+          // We continue with status update even if reversal fails to avoid getting stuck
+        }
+      }
 
       // Update the order status
       await updateDoc(orderRef, {
