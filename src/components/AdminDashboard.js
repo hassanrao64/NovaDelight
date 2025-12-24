@@ -2622,6 +2622,34 @@ const AdminDashboard = ({ adminRole }) => {
     setSelectedOrder(null);
   };
 
+  const handleOrderDelete = async (orderId) => {
+    if (!window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await deleteDoc(doc(db, 'orders', orderId));
+
+      setSnackbar({
+        open: true,
+        message: 'Order deleted successfully',
+        severity: 'success'
+      });
+
+      await fetchOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete order: ' + error.message,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderDashboardContent = () => {
     return (
       <Box sx={{ mt: 3 }}>
@@ -4402,18 +4430,29 @@ const AdminDashboard = ({ adminRole }) => {
                               </Tooltip>
 
                               {!isMiniAdmin ? (
-                                <Tooltip title="Update Status">
-                                  <IconButton
-                                    size="small"
-                                    color="info"
-                                    onClick={(event) => {
-                                      setSelectedOrder(order);
-                                      setAnchorEl(event.currentTarget);
-                                    }}
-                                  >
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
+                                <>
+                                  <Tooltip title="Update Status">
+                                    <IconButton
+                                      size="small"
+                                      color="info"
+                                      onClick={(event) => {
+                                        setSelectedOrder(order);
+                                        setAnchorEl(event.currentTarget);
+                                      }}
+                                    >
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Delete Order">
+                                    <IconButton
+                                      size="small"
+                                      color="error"
+                                      onClick={() => handleOrderDelete(order.id)}
+                                    >
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </>
                               ) : (
                                 <Chip label="Read-Only" size="small" variant="outlined" sx={{ ml: 1 }} />
                               )}
