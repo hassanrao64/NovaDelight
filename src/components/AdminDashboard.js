@@ -72,7 +72,7 @@ import {
 } from '@mui/icons-material';
 import { db, auth } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, setDoc, addDoc, orderBy, onSnapshot, serverTimestamp, getDoc, arrayUnion, arrayRemove, increment, documentId, deleteField } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, setDoc, addDoc, orderBy, onSnapshot, serverTimestamp, getDoc, arrayUnion, arrayRemove, increment, documentId } from 'firebase/firestore';
 import { Chat } from './ChatComponents';
 import StatusUpdateModal from './StatusUpdateModal';
 import WithdrawalRequestsManager from './WithdrawalRequestsManager';
@@ -2320,69 +2320,6 @@ const AdminDashboard = ({ adminRole }) => {
       // Log the original order data
       console.log('ORIGINAL ORDER DATA:', JSON.stringify(orderData, null, 2));
 
-      // Handle Reversal: if changing from 'completed' back to 'on-the-way'
-      if (orderData.status === 'completed' && newStatus === 'on-the-way' && orderData.sellerId) {
-        try {
-          const transferAmount = Number(orderData.pendingTransferred || 0);
-
-          if (transferAmount > 0) {
-            console.log('REVERSING TRANSFER: Moving amount back to pending', transferAmount);
-
-            // Get seller data
-            const sellerRef = doc(db, 'sellers', orderData.sellerId);
-            const sellerDoc = await getDoc(sellerRef);
-
-            if (sellerDoc.exists()) {
-              const sellerData = sellerDoc.data();
-              const currentWalletBalance = Number(sellerData.walletBalance || 0);
-              const currentPendingAmount = Number(sellerData.pendingAmount || 0);
-
-              const newWalletBalance = currentWalletBalance - transferAmount;
-              const newPendingAmount = currentPendingAmount + transferAmount;
-
-              // Update seller
-              await updateDoc(sellerRef, {
-                walletBalance: newWalletBalance,
-                pendingAmount: newPendingAmount,
-                lastUpdated: serverTimestamp()
-              });
-
-              // Add transaction record
-              await addDoc(collection(db, 'transactions'), {
-                orderId: orderId,
-                sellerId: orderData.sellerId,
-                amount: transferAmount,
-                type: 'order_status_reversed',
-                timestamp: serverTimestamp(),
-                description: `Order #${orderData.orderNumber || orderId.substring(0, 8)} status changed from completed back to on-the-way. $${transferAmount.toFixed(2)} moved back from wallet to pending balance.`,
-                walletBalanceBefore: currentWalletBalance,
-                walletBalanceAfter: newWalletBalance,
-                pendingAmountBefore: currentPendingAmount,
-                pendingAmountAfter: newPendingAmount,
-                processedBy: 'admin'
-              });
-
-              // Clear transfer-related fields from the order document
-              await updateDoc(orderRef, {
-                pendingTransferred: deleteField(),
-                baseAmountTransferred: deleteField(),
-                profitAmountTransferred: deleteField(),
-                transferredAt: deleteField(),
-                walletBalanceBefore: deleteField(),
-                walletBalanceAfter: deleteField(),
-                pendingAmountBefore: deleteField(),
-                pendingAmountAfter: deleteField()
-              });
-
-              console.log(`SUCCESS: Reversed $${transferAmount.toFixed(2)} for order ${orderId}`);
-            }
-          }
-        } catch (reversalError) {
-          console.error('ERROR during wallet reversal process:', reversalError);
-          // We continue with status update even if reversal fails to avoid getting stuck
-        }
-      }
-
       // Update the order status
       await updateDoc(orderRef, {
         status: newStatus,
@@ -2620,34 +2557,6 @@ const AdminDashboard = ({ adminRole }) => {
   const handleCloseOrderDetailsModal = () => {
     setIsOrderDetailsModalOpen(false);
     setSelectedOrder(null);
-  };
-
-  const handleOrderDelete = async (orderId) => {
-    if (!window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await deleteDoc(doc(db, 'orders', orderId));
-
-      setSnackbar({
-        open: true,
-        message: 'Order deleted successfully',
-        severity: 'success'
-      });
-
-      await fetchOrders();
-    } catch (error) {
-      console.error('Error deleting order:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to delete order: ' + error.message,
-        severity: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   const renderDashboardContent = () => {
@@ -4430,29 +4339,18 @@ const AdminDashboard = ({ adminRole }) => {
                               </Tooltip>
 
                               {!isMiniAdmin ? (
-                                <>
-                                  <Tooltip title="Update Status">
-                                    <IconButton
-                                      size="small"
-                                      color="info"
-                                      onClick={(event) => {
-                                        setSelectedOrder(order);
-                                        setAnchorEl(event.currentTarget);
-                                      }}
-                                    >
-                                      <EditIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Delete Order">
-                                    <IconButton
-                                      size="small"
-                                      color="error"
-                                      onClick={() => handleOrderDelete(order.id)}
-                                    >
-                                      <DeleteIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                </>
+                                <Tooltip title="Update Status">
+                                  <IconButton
+                                    size="small"
+                                    color="info"
+                                    onClick={(event) => {
+                                      setSelectedOrder(order);
+                                      setAnchorEl(event.currentTarget);
+                                    }}
+                                  >
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               ) : (
                                 <Chip label="Read-Only" size="small" variant="outlined" sx={{ ml: 1 }} />
                               )}
@@ -4873,6 +4771,7 @@ const AdminDashboard = ({ adminRole }) => {
     const [selectedSeller, setSelectedSeller] = useState('');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
+    const [transactionType, setTransactionType] = useState('add'); // 'add' or 'deduct'
 
     // Add the missing handler functions
     const handleSellerChange = (event) => {
@@ -4903,7 +4802,7 @@ const AdminDashboard = ({ adminRole }) => {
           ...doc.data()
         }));
         // Sort sellers by email in ascending order
-        sellersList.sort((a, b) => a.email.localeCompare(b.email));
+        sellersList.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
         setSellers(sellersList);
       } catch (error) {
         console.error('Error fetching sellers:', error);
@@ -4913,15 +4812,15 @@ const AdminDashboard = ({ adminRole }) => {
       }
     };
 
-    const handleAddMoney = async () => {
+    const handleTransaction = async () => {
       if (!selectedSeller || !amount) {
         alert('Please select a seller and enter an amount.');
         return;
       }
 
-      const amountToAdd = parseFloat(amount);
+      const amountValue = parseFloat(amount);
 
-      if (isNaN(amountToAdd) || amountToAdd <= 0) {
+      if (isNaN(amountValue) || amountValue <= 0) {
         alert('Please enter a valid amount greater than 0.');
         return;
       }
@@ -4941,9 +4840,12 @@ const AdminDashboard = ({ adminRole }) => {
         const currentBalance = sellerData.walletBalance || 0;
         const currentRevenue = sellerData.totalRevenue || 0;
 
+        const isDeduction = transactionType === 'deduct';
+        const finalAmount = isDeduction ? -amountValue : amountValue;
+
         // Calculate new values - use toFixed(2) to ensure proper decimal handling
-        const newBalance = parseFloat((currentBalance + amountToAdd).toFixed(2));
-        const newRevenue = parseFloat((currentRevenue + amountToAdd).toFixed(2));
+        const newBalance = parseFloat((currentBalance + finalAmount).toFixed(2));
+        const newRevenue = parseFloat((currentRevenue + finalAmount).toFixed(2));
 
         // Update both wallet balance and revenue
         await updateDoc(sellerDocRef, {
@@ -4955,27 +4857,32 @@ const AdminDashboard = ({ adminRole }) => {
         // Add transaction record
         await addDoc(collection(db, 'transactions'), {
           sellerId: selectedSeller,
-          amount: amountToAdd,
-          type: 'admin_deposit',
+          amount: finalAmount, // Store negative amount for deduction
+          type: isDeduction ? 'admin_deduction' : 'admin_deposit',
           affectsRevenue: true,
           timestamp: serverTimestamp(),
           previousBalance: currentBalance,
           newBalance: newBalance,
           previousRevenue: currentRevenue,
           newRevenue: newRevenue,
-          note: 'Manual deposit by admin'
+          note: isDeduction ? 'Manual deduction by admin' : 'Manual deposit by admin'
         });
 
         // Refresh stats to update revenue display
         fetchStats();
 
-        alert(`Successfully updated:\n- Added $${amountToAdd.toFixed(2)} to wallet\n- New Balance: $${newBalance.toFixed(2)}\n- New Revenue: $${newRevenue.toFixed(2)}`);
+        const actionText = isDeduction ? 'Deducted' : 'Added';
+        const preposition = isDeduction ? 'from' : 'to';
+
+        alert(`Successfully updated:\n- ${actionText} $${amountValue.toFixed(2)} ${preposition} wallet\n- New Balance: $${newBalance.toFixed(2)}\n- New Revenue: $${newRevenue.toFixed(2)}`);
+
         setSelectedSeller('');
         setAmount('');
+        // We keep the transaction type as is, user might want to do repeat action
 
       } catch (error) {
-        console.error('Error adding funds:', error);
-        alert('Failed to add funds. Please try again.');
+        console.error('Error updating funds:', error);
+        alert('Failed to update funds. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -4984,10 +4891,37 @@ const AdminDashboard = ({ adminRole }) => {
     return (
       <Box sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
         <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h5" gutterBottom>
-            Add Money to Seller's Wallet
+          <Typography variant="h5" gutterBottom align="center">
+            {transactionType === 'deduct' ? "Deduct Money from Seller's Wallet" : "Add Money to Seller's Wallet"}
             {isMiniAdmin && <Chip label="Read-Only Mode" color="warning" size="small" sx={{ ml: 2 }} />}
           </Typography>
+
+          <Box sx={{ mb: 3, mt: 2, display: 'flex', justifyContent: 'center' }}>
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ bgcolor: 'background.default', p: 1, borderRadius: 2 }}>
+              <Typography
+                color={transactionType === 'add' ? 'primary.main' : 'text.secondary'}
+                fontWeight={transactionType === 'add' ? 'bold' : 'normal'}
+                onClick={() => setTransactionType('add')}
+                sx={{ cursor: 'pointer' }}
+              >
+                Add Money
+              </Typography>
+              <Switch
+                checked={transactionType === 'deduct'}
+                onChange={(e) => setTransactionType(e.target.checked ? 'deduct' : 'add')}
+                color="error"
+              />
+              <Typography
+                color={transactionType === 'deduct' ? 'error.main' : 'text.secondary'}
+                fontWeight={transactionType === 'deduct' ? 'bold' : 'normal'}
+                onClick={() => setTransactionType('deduct')}
+                sx={{ cursor: 'pointer' }}
+              >
+                Deduct Money
+              </Typography>
+            </Stack>
+          </Box>
+
           <FormControl fullWidth sx={{ mb: 2 }} disabled={isMiniAdmin}>
             <InputLabel id="seller-select-label">Select Seller</InputLabel>
             <Select
@@ -4999,7 +4933,6 @@ const AdminDashboard = ({ adminRole }) => {
             >
               {sellers.map(seller => (
                 <MenuItem key={seller.id} value={seller.id}>
-                  {/* {seller.name || 'Unnamed'} -  */}
                   {seller.email} (Current Balance: ${seller.walletBalance ? seller.walletBalance.toFixed(2) : '0.00'})
                 </MenuItem>
               ))}
@@ -5020,12 +4953,14 @@ const AdminDashboard = ({ adminRole }) => {
           />
           <Button
             variant="contained"
-            color="primary"
-            onClick={handleAddMoney}
+            color={transactionType === 'deduct' ? 'error' : 'primary'}
+            onClick={handleTransaction}
             disabled={isMiniAdmin || !selectedSeller || !amount}
             fullWidth
+            size="large"
+            sx={{ mt: 1 }}
           >
-            ADD MONEY TO WALLET
+            {transactionType === 'deduct' ? 'DEDUCT MONEY FROM WALLET' : 'ADD MONEY TO WALLET'}
           </Button>
         </Paper>
       </Box>
